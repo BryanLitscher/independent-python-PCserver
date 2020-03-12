@@ -1,0 +1,219 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Relay Board Control</title>
+	<style>
+	
+	.switch {
+	  position: relative;
+	  display: inline-block;
+	  width: 60px;
+	  height: 34px;
+	}
+	/* Hide default HTML checkbox */
+	.switch input {
+	  opacity: 0;
+	  width: 0;
+	  height: 0;
+	}
+	/* The slider */
+	.slider {
+	  position: absolute;
+	  cursor: pointer;
+	  top: 0;
+	  left: 0;
+	  right: 0;
+	  bottom: 0;
+	  background-color: #ccc;
+	  -webkit-transition: .4s;
+	  transition: .4s;
+	}	
+	.slider:before {
+	  position: absolute;
+	  content: "";
+	  height: 26px;
+	  width: 26px;
+	  left: 4px;
+	  bottom: 4px;
+	  background-color: white;
+	  -webkit-transition: .4s;
+	  transition: .4s;
+	}
+	input:checked + .slider {
+	  background-color: #2196F3;
+	}
+	
+	input:focus + .slider {
+	  box-shadow: 0 0 1px #2196F3;
+	}
+	input:checked + .slider:before {
+	  -webkit-transform: translateX(26px);
+	  -ms-transform: translateX(26px);
+	  transform: translateX(26px);
+	}
+	
+	/* Rounded sliders */
+	.slider.round {
+	  border-radius: 34px;
+	}
+
+	.slider.round:before {
+	  border-radius: 50%;
+	}
+	
+	.grid-container {
+	  display: grid;
+	  grid-template-columns: 100px 100px 100px 100px;
+	  grid-template-rows:  100px 100px 100px 100px;
+	  grid-gap: 10px;
+	  background-color: white;
+	  padding: 10px;
+	  border:1px solid black;
+	  border-radius:10px;
+	  width:430px;
+	  height:100px;
+	}
+	
+	.grid-container > div {
+  text-align: center;
+  width:100px;
+  font-size: 30px;
+  border-radius:80%;
+background-color:gray;
+  }
+
+		
+	</style>
+	<script>
+		function initialize(){
+			//code after page loads
+			//sendMsg('{"command":"getSwitchStatus"}')
+		   let boardStatus = {"command":"getBoardStatus"}
+		   sendMsg(JSON.stringify(boardStatus));
+		}
+
+	</script>
+  </head>
+  <body onload="initialize()">
+    <!-- <button onClick="sendMsg()">Hit Me</button> -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+    <script>
+      const socket = io("http://localhost:8080");
+
+      function sendMsg( m = "HELLO WORLD") {
+        socket.emit("message", m);
+      }
+	  socket.on("message", function(data) {
+		  //console.log(data);
+		  //console.log(typeof(data))
+		  var obj = JSON.parse(data);
+		  //console.log(obj)
+		  if (obj.hasOwnProperty("command")){
+			  if (obj["command"]==="currentRelayStatus"){
+				for( let i = 0; i < 2; i++ ){
+					let relayName = "relay" + i;
+					console.log(relayName)
+					if (obj.hasOwnProperty(relayName)){
+						if(obj[relayName]==="on"){  
+							document.getElementById(relayName).checked = true
+						}else{
+							document.getElementById(relayName).checked = false
+						}
+					}
+				}
+				
+			  }
+			  if (obj["command"]==="currentGPIOStatus"){
+				for( let i = 0; i < 4; i++ ){
+					if (obj.hasOwnProperty("gpio" + i)){
+						//console.log(obj["gpio" + i] )
+						let gpioColor = obj["gpio" + i]==="0"?"red":"green";
+						document.querySelector( "body > div > div:nth-child(" + ( i + 1 )+ ")").style.backgroundColor = gpioColor;
+					}
+				}
+			  }
+			  if (obj["command"]==="currentBoardStatus"){
+				//console.log(obj["relays"])
+				//console.log(obj["gpios"])
+				for( let i = 0; i < 4; i++ ){
+					if (obj["gpios"].hasOwnProperty("gpio" + i)){
+						//console.log(obj["gpio" + i] )
+						let gpioColor = obj["gpios"]["gpio" + i]==="0"?"red":"green";
+						document.querySelector( "body > div > div:nth-child(" + ( i + 1 )+ ")").style.backgroundColor = gpioColor;
+					}
+				}
+				for( let i = 0; i < 2; i++ ){
+					let relayName = "relay" + i;
+					//console.log(relayName)
+					if (obj["relays"].hasOwnProperty(relayName)){
+						if(obj["relays"][relayName]==="on"){  
+							document.getElementById(relayName).checked = true
+						}else{
+							document.getElementById(relayName).checked = false
+						}
+					}
+				}
+			  }
+
+
+
+
+			  
+			}
+		});
+    </script>
+	
+	<p>
+		<!-- Rounded switch -->
+		<label class="switch">
+		  <input id="relay0"  type="checkbox">
+		  <span class="slider round"></span>
+		</label>	
+	</p>	
+	<p>
+		<!-- Rounded switch -->
+		<label  class="switch">
+		  <input id="relay1" type="checkbox">
+		  <span class="slider round"></span>
+		</label>	
+	</p>
+	
+	<script>
+	document.getElementById("relay1").addEventListener("click", switchStatus);
+	document.getElementById("relay0").addEventListener("click", switchStatus);
+	function switchStatus(){
+
+	  let relaySwitchStatus = {"command":"setSwitch"}
+	  if ( document.getElementById("relay0").checked ){
+		relaySwitchStatus["relay0"] = "on"
+	  }else{
+	   relaySwitchStatus["relay0"] = "off"
+	  }	  
+	  if ( document.getElementById("relay1").checked ){
+		relaySwitchStatus["relay1"] = "on"
+	  }else{
+	   relaySwitchStatus["relay1"] = "off"
+	  }
+	  //console.log( document.getElementById("relay2").checked);
+	  sendMsg(JSON.stringify(relaySwitchStatus));
+	
+	}
+	
+	
+	</script>
+	
+	<div class="grid-container">
+	<div class="griditem"></div>
+	<div class="griditem"></div>
+	<div class="griditem"></div>
+	<div class="griditem"></div>
+	
+	</div>
+	
+  </body>
+</html>
